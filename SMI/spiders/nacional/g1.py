@@ -54,10 +54,10 @@ class G1MgSpider(scrapy.Spider):
         # Usando o novo seletor para capturar o corpo da notícia
         corpo = " ".join(response.css('p.content-text__container::text').getall())
 
-        # Extraindo o autor da notícia
-        autor = response.css("p.content-publication-data__from::text").get()
+        # Extraindo o autor da notícia (novo seletor)
+        autor = response.css("a.multi_signatures::text").get()
 
-        # Remover a palavra "Por" se ela estiver no início do autor
+        # Verificar se o autor contém "Por" no início e removê-lo
         if autor:
             autor = autor.strip()
             if autor.lower().startswith("por "):  # Verifica se começa com "Por"
@@ -65,28 +65,33 @@ class G1MgSpider(scrapy.Spider):
         else:
             autor = "Autor não encontrado"
 
+        # Definindo a data como a data atual
+        data_atual = datetime.now().strftime("%Y-%m-%d")  # Formato YYYY-MM-DD
+
         # Verificar se a notícia contém pelo menos 1 palavra obrigatória e 1 palavra adicional
-        if self.verificar_palavras_chave(corpo):
+        palavras_adicionais_encontradas = []
+        if self.verificar_palavras_chave(corpo, palavras_adicionais_encontradas):
             self.noticias_filtradas += 1  # Incrementa o contador de notícias filtradas
             self.logger.info(f"Notícia válida: {response.css('h1.content-head__title::text').get()}")
             self.logger.info(f"Autor da notícia: {autor}")  # Log para verificar o autor
 
-            # Aqui você pode processar a notícia, como salvar no banco de dados ou retornar os dados
-            yield {
-                'titulo': response.css("h1.content-head__title::text").get(),
-                'corpo': corpo,
-                'autor': autor,  # Incluindo o autor no dicionário
-                'link': response.url
-            }
+            # Salvando no banco de dados
+            self.salvar_noticia(
+                titulo=response.css("h1.content-head__title::text").get(),
+                corpo=corpo,
+                autor=autor,
+                data=data_atual,
+                link=response.url,
+                palavras_adicionais=palavras_adicionais_encontradas
+            )
         else:
             self.logger.info(f"Notícia ignorada: {response.css('h1.content-head__title::text').get()}")
 
-    def verificar_palavras_chave(self, corpo_noticia):
+    def verificar_palavras_chave(self, corpo_noticia, palavras_adicionais_encontradas):
         """Verifica se o corpo da notícia contém pelo menos 1 palavra obrigatória e 1 palavra adicional."""
         corpo_noticia = corpo_noticia.lower().strip()  # Garantir que a comparação seja em minúsculas e sem espaços extras
 
         encontrou_obrigatoria = False
-        palavras_adicionais_encontradas = []
 
         # Verificar se existe pelo menos 1 palavra obrigatória
         for palavra in self.palavras_obrigatorias:
@@ -108,6 +113,30 @@ class G1MgSpider(scrapy.Spider):
         # Retornar True se ambas as condições forem atendidas
         return encontrou_obrigatoria and len(palavras_adicionais_encontradas) > 0
 
-    def closed(self, reason):
-        """Este método é chamado quando o spider termina de rodar."""
-        self.logger.info(f"Total de notícias válidas filtradas: {self.noticias_filtradas}")
+    def salvar_noticia(self, titulo, corpo, autor, data, link, palavras_adicionais):
+        """Salva a notícia no banco de dados, incluindo o valor dos pontos do portal."""
+        # Conectando ao banco de dados
+        conn = sqlite3.connect('db/banco_smi.db')
+        cursor = conn.cursor()
+
+        # Passo 1: Buscar o valor de pontos do portal na tabela portais
+        cursor.execute("SELECT pontos FROM portais WHERE id = ?", (self.ID,))
+        resultado = cursor.fetchone()
+
+        # Passo 2: Verificar se o resultado foi encontrado e obter o valor de pontos
+        if resultado:
+            pontos = resultado[0]  # Extrai o valor da coluna "pontos"
+        else:
+            pontos = 0  # Se não encontrar, podemos atribuir 0 pontos como padrão
+
+        # Passo 3: Inserir a notícia na tabela "noticias" com o valor de pontos
+        cursor.execute("""
+            INSERT INTO noticias (data, portal, titulo, corpo, link, autor, pontos, keywords)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (data, "G1 Minas", titulo, corpo, link, autor, pontos, ', '.join(palavras_adicionais)))
+
+        # Commit e fechamento da conexão
+        conn.commit()
+        conn.close()
+
+
