@@ -2,7 +2,7 @@ import scrapy
 from SMI.items import seletor_corpo  # Importa a função seletor_corpo
 
 class EstadoDeMinasSpider(scrapy.Spider):
-    name = "Estado de Minas"
+    name = "Estado de Minas_ddd"
     start_urls = [
         "https://www.em.com.br/gerais/2025/02/7052556-mg-idoso-e-filho-sao-esfaqueados-dentro-de-casa-durante-jogo-de-truco.html"
     ]
