@@ -87,4 +87,28 @@ def buscar_categorias():
         if 'conexao' in locals():
             conexao.close()
 
-   
+
+def seletor_corpo(db_path, name):
+    # Conectar ao banco de dados
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    try:
+        # Consulta SQL para buscar o seletor associado ao nome do portal
+        cursor.execute("SELECT sel_corpo FROM portais WHERE nome = ?", (name,))
+        resultado = cursor.fetchone()  # Retorna apenas uma linha
+        
+        # Verifica se há um resultado
+        if resultado:
+            return resultado[0]  # Retorna o seletor CSS
+        else:
+            print(f"Nenhum seletor encontrado para o nome '{name}'")
+            return None
+    
+    except Exception as e:
+        print(f"Erro ao buscar seletor para o nome '{name}': {e}")
+        return None
+    
+    finally:
+        # Fechar a conexão com o banco de dados
+        conn.close()

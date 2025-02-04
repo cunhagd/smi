@@ -40,15 +40,22 @@ class EmSpider(SitemapSpider):
             self.logger.info(f"Notícia ignorada (data: {news_date}): {response.url}")
         
 
-        # Extrair todos os parágrafos da notícia
-        paragrafos = response.xpath('//*[@id="edm-general"]/main/div[4]/div[2]/p//text()').getall()
+    def parse_noticia(self, response):
+            # Recupera os dados passados via meta
+            news_data = response.meta["news_data"]
 
-        # Limpar os parágrafos (remover espaços extras)
-        paragrafos_limpos = [p.strip() for p in paragrafos if p.strip()]
+            # Extrair todos os parágrafos da notícia
+            paragrafos = response.xpath('//*[@id="edm-general"]/main/div[4]/div[2]/p//text()').getall()
 
-        # Concatenar os parágrafos em um único texto, com quebras de linha entre eles
-        corpo = "\n\n".join(paragrafos_limpos)
+            # Limpar os parágrafos (remover espaços extras)
+            paragrafos_limpos = [p.strip() for p in paragrafos if p.strip()]
 
-        # Salvar os dados
-        yield corpo
-            
+            # Concatenar os parágrafos em um único texto, com quebras de linha entre eles
+            corpo = "\n\n".join(paragrafos_limpos)
+
+            # Adicionar o corpo ao dicionário de dados da notícia
+            news_data["corpo"] = corpo
+
+            # Retornar os dados completos
+            yield news_data
+                
