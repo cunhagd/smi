@@ -6,20 +6,12 @@ cursor = conn.cursor()
 
 # Deletar a tabela antiga e criar a nova tabela
 cursor.execute("""
-    DROP TABLE IF EXISTS noticias;
+    DROP TABLE IF EXISTS crawler;
 """)
 cursor.execute("""
-    CREATE TABLE noticias (
+    CREATE TABLE crawler (
         id INTEGER PRIMARY KEY,
-        data TEXT,
-        portal TEXT,
-        titulo TEXT,
-        corpo TEXT,
-        link TEXT,
-        autor TEXT,
-        pontos INTEGER,
-        adicionais TEXT,
-        obrigatorias TEXT
+        categoria TEXT
     );
 """)
 

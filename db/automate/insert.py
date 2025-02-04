@@ -1,10 +1,10 @@
 import sqlite3
-import db.automate.dic as dic  # Importando o módulo dic.py onde estão os dados dos portais
+import db.automate.dic as dic # Importando o módulo dic.py onde estão os dados dos portais
 
 # Função para inserir dados na tabela 'portais'
 def inserir_dados():
     # Caminho do banco de dados
-    db_path = r'C:\Users\m1603994\SMI\db\banco_smi.db'
+    db_path = r'db\banco_smi.db'
     
     # Conectar ao banco de dados SQLite
     conn = sqlite3.connect(db_path)
@@ -17,6 +17,8 @@ def inserir_dados():
             'apelido': apelido,          # Usando a chave do dicionário como apelido
             'nome': portal['nome'],
             'url': portal['url'],
+            'rastreio': "",
+            'tipo': "",
             'abrangencia': portal['abrangencia'],
             'prioridade': portal['prioridade'],
             'pontos': portal['pontos']
@@ -24,8 +26,8 @@ def inserir_dados():
         
         # Comando SQL para inserir os dados
         sql = '''
-        INSERT INTO portais (apelido, nome, url, abrangencia, prioridade, pontos)
-        VALUES (:apelido, :nome, :url, :abrangencia, :prioridade, :pontos)
+        INSERT INTO portais (apelido, nome, url, rastreio, tipo, abrangencia, prioridade, pontos)
+        VALUES (:apelido, :nome, :url, :rastreio, :tipo, :abrangencia, :prioridade, :pontos)
         '''
         
         try:

@@ -1,5 +1,5 @@
 import sqlite3
-import keywords as keywords  # Importa o módulo com as palavras-chave
+import db.automate.keywords as keywords  # Importa o módulo com as palavras-chave
 
 def criar_conexao(db_path='db/banco_smi.db'):
     """Estabelece a conexão com o banco de dados SQLite. Cria o arquivo se não existir."""
