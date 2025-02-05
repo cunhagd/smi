@@ -1,61 +1,102 @@
-import scrapy
 from scrapy.spiders import SitemapSpider
 from datetime import datetime
-from SMI.items import buscar_categorias, buscar_urls # Importa a função para buscar categorias
+from SMI.database import buscar_urls, buscar_apelido, buscar_pontos, buscar_abrangencia, buscar_categorias, seletor_autor, seletor_corpo, DB_PATH
+from SMI.items import NoticiaItem
+from SMI.utils import filtrar_keywords
+
 
 class EmSpider(SitemapSpider):
-    name = "Estado de Minas_original"
-    sitemap_urls = ["https://www.em.com.br/sitemap.xml"]
+    name = "Estado de Minas"
 
     def __init__(self, *args, **kwargs):
         super(EmSpider, self).__init__(*args, **kwargs)
-        # Carrega as categorias indesejadas no banco de dados durante a inicialização
-        self.categorias_indesejadas = set(buscar_categorias())  # Usamos um conjunto para otimizar a busca
+        apelidos = buscar_apelido(self.name)
+        if apelidos:
+            self.sitemap_urls = buscar_urls(DB_PATH, apelidos[0])
+        else:
+            print("Nenhum apelido encontrado no banco de dados.")
+            self.sitemap_urls = []
+        self.categorias_indesejadas = set(buscar_categorias())
+
+    def obter_seletor(self, funcao_seletor, tipo):
+        seletor = funcao_seletor(DB_PATH, self.name)
+        if not seletor:
+            self.log(f"Seletor CSS para {tipo} não encontrado para o portal '{self.name}'")
+            return None
+        return seletor
 
     def parse(self, response):
-        # Gera o timestamp atual
         current_timestamp = datetime.now().isoformat()
-        # Obtém a data atual (apenas a parte da data, sem hora)
         today = datetime.now().date()
 
-        # Verifica se a URL contém alguma categoria existente
+        # Ignora URLs com categorias indesejadas
         if any(categoria in response.url for categoria in self.categorias_indesejadas):
             self.logger.info(f"URL ignorada (categoria indesejada): {response.url}")
-            return  # Ignora a URL se a categoria estiver cadast    rada
+            return
 
-        # Cria um dicionário com os dados da notícia
-        news_data = {
-            "url": response.url,
-            "timestamp": current_timestamp
-        }
+        # Extrai o título da notícia
+        title = response.xpath('//title/text()').get()
+        if not title:
+            title = response.xpath('//h1/text()').get()
+        if not title:
+            title = response.xpath('//meta[@property="og:title"]/@content').get()
 
-        # Extrai a data do timestamp gerado
-        news_date = datetime.fromisoformat(news_data["timestamp"]).date()
+        # Cria o objeto NoticiaItem
+        item = NoticiaItem()
+        item['title'] = title
+        item['timestamp'] = current_timestamp
+        item['url'] = response.url
 
-        # Verifica se a data do timestamp é igual à data atual
-        if news_date == today:
-            self.logger.info(f"Notícia de hoje encontrada: {response.url}")
-            yield news_data
-        else:
+        # Verifica se a notícia é de hoje
+        news_date = datetime.fromisoformat(item["timestamp"]).date()
+        if news_date != today:
             self.logger.info(f"Notícia ignorada (data: {news_date}): {response.url}")
-        
+            return
 
-    def parse_noticia(self, response):
-            # Recupera os dados passados via meta
-            news_data = response.meta["news_data"]
+        # Obtém o seletor do corpo da notícia
+        sel_corpo = self.obter_seletor(seletor_corpo, "corpo")
+        if not sel_corpo:
+            return
 
-            # Extrair todos os parágrafos da notícia
-            paragrafos = response.xpath('//*[@id="edm-general"]/main/div[4]/div[2]/p//text()').getall()
+        # Extrai o corpo completo da notícia
+        paragrafos = response.css(sel_corpo).getall()
+        corpo_completo = "\n".join([p.strip() for p in paragrafos if p.strip()])
+        item['corpo_completo'] = corpo_completo
 
-            # Limpar os parágrafos (remover espaços extras)
-            paragrafos_limpos = [p.strip() for p in paragrafos if p.strip()]
+        # Filtra a notícia com base nas palavras-chave
+        palavras_encontradas = filtrar_keywords(DB_PATH, corpo_completo, debug=True)
+        if not palavras_encontradas:
+            self.log(f"Notícia ignorada (não atende às palavras-chave): {response.url}")
+            return
 
-            # Concatenar os parágrafos em um único texto, com quebras de linha entre eles
-            corpo = "\n\n".join(paragrafos_limpos)
+        # Verifica a regra de relevância
+        tem_obrigatoria = len(palavras_encontradas["obrigatorias"]) > 0
+        tem_adicional = len(palavras_encontradas["adicionais"]) > 0
+        if not (tem_obrigatoria and tem_adicional):
+            self.log(f"Notícia ignorada (não atende à regra de relevância): {response.url}")
+            return
 
-            # Adicionar o corpo ao dicionário de dados da notícia
-            news_data["corpo"] = corpo
+        # Adiciona as palavras-chave encontradas ao item
+        item['palavras_obrigatorias_encontradas'] = palavras_encontradas["obrigatorias"]
+        item['palavras_adicionais_encontradas'] = palavras_encontradas["adicionais"]
 
-            # Retornar os dados completos
-            yield news_data
-                
+        # Extrai o autor usando o seletor obtido
+        sel_autor = self.obter_seletor(seletor_autor, "autor")
+        if sel_autor:
+            autor_element = response.css(sel_autor).get()  # Obtém o elemento HTML
+            if autor_element:
+                # Extrai apenas o texto do elemento
+                autor = response.css(sel_autor + '::text').get()
+                item['autor'] = autor.strip() if autor else None
+            else:
+                item['autor'] = None
+
+        # Busca pontos e abrangência do portal
+        pontos_portal = buscar_pontos(self.name)
+        item['pontos'] = pontos_portal if pontos_portal else None
+
+        abrangencia_portal = buscar_abrangencia(self.name)
+        item['abrangencia'] = abrangencia_portal if abrangencia_portal else None
+
+        # Retorna o item da notícia
+        yield item

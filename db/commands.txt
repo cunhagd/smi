@@ -19,8 +19,10 @@ CREATE TABLE IF NOT EXISTS nova_usuarios (
 );
 # Passo 2: Copiar dados (exceto a coluna indesejada)
 INSERT INTO nova_usuarios (id, nome) SELECT id, nome FROM usuarios;
+
 # Passo 3: Excluir a tabela antiga
 DROP TABLE usuarios;
+
 # Passo 4: Renomear a nova tabela
 ALTER TABLE nova_usuarios RENAME TO usuarios;
 
