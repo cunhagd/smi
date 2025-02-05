@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import datetime
+import re
 
 # Caminho do banco de dados
 DB_PATH = r"db\banco_smi.db"
@@ -112,3 +113,70 @@ def seletor_corpo(db_path, name):
     finally:
         # Fechar a conexão com o banco de dados
         conn.close()
+
+def filtrar_keywords(db_path, corpo_noticia, debug=False):
+    # Conectar ao banco de dados
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    try:
+        # Consulta SQL para buscar palavras-chave obrigatórias e adicionais
+        cursor.execute("SELECT palavra, tipo FROM palavras_chave")
+        resultados = cursor.fetchall()
+        
+        # Separar as palavras-chave em duas listas
+        palavras_obrigatorias = [row[0] for row in resultados if row[1] == 'obrigatoria']
+        palavras_adicionais = [row[0] for row in resultados if row[1] == 'adicional']
+        
+        # Função auxiliar para verificar se uma palavra é uma sigla (duas letras maiúsculas seguidas)
+        def is_sigla(palavra):
+            return any(char.isupper() and palavra[i + 1].isupper() for i, char in enumerate(palavra[:-1]))
+        
+        # Função auxiliar para verificar se uma palavra-chave existe no corpo da notícia
+        def encontrar_palavra(palavra, texto):
+            if is_sigla(palavra):
+                # Para siglas, usar regex para garantir correspondência exata
+                padrao = r'\b' + re.escape(palavra) + r'\b'
+                return bool(re.search(padrao, texto))
+            else:
+                # Para palavras normais, verificar case-insensitive
+                padrao = r'\b' + re.escape(palavra.lower()) + r'\b'
+                return bool(re.search(padrao, texto.lower()))
+        
+        # Debug: Imprimir todas as palavras-chave para verificação
+        print(f"Palavras-chave obrigatórias: {palavras_obrigatorias}")
+        print(f"Palavras-chave adicionais: {palavras_adicionais}")
+        
+        # Verificar quais palavras-chave foram encontradas
+        palavras_obrigatorias_encontradas = [
+            palavra for palavra in palavras_obrigatorias if encontrar_palavra(palavra, corpo_noticia)
+        ]
+        palavras_adicionais_encontradas = [
+            palavra for palavra in palavras_adicionais if encontrar_palavra(palavra, corpo_noticia)
+        ]
+        
+        # Debug: Imprimir palavras encontradas para verificação
+        print(f"Palavras obrigatórias encontradas: {palavras_obrigatorias_encontradas}")
+        print(f"Palavras adicionais encontradas: {palavras_adicionais_encontradas}")
+        
+        # Verificar se a notícia atende às regras
+        tem_obrigatoria = len(palavras_obrigatorias_encontradas) > 0
+        tem_adicional = len(palavras_adicionais_encontradas) > 0
+        
+        # Retornar resultado
+        if debug:
+            return {
+                "obrigatorias": palavras_obrigatorias_encontradas,
+                "adicionais": palavras_adicionais_encontradas
+            }
+        return tem_obrigatoria and tem_adicional
+    
+    except Exception as e:
+        print(f"Erro ao filtrar palavras-chave: {e}")
+        return False if not debug else {"obrigatorias": [], "adicionais": []}
+    
+    finally:
+        # Fechar a conexão com o banco de dados
+        conn.close()
+
+    

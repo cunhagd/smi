@@ -1,7 +1,7 @@
 import scrapy
 from scrapy.spiders import SitemapSpider
 from datetime import datetime
-from SMI.items import DB_PATH, buscar_urls, buscar_categorias, buscar_apelido, seletor_corpo  # Importa as funções necessárias
+from SMI.items import DB_PATH, buscar_urls, buscar_categorias, buscar_apelido, seletor_corpo, filtrar_keywords  # Importa as funções necessárias
 
 class EmSpider(SitemapSpider):  # Classe da spider
     name = "Estado de Minas"  # Nome da spider
@@ -54,6 +54,28 @@ class EmSpider(SitemapSpider):  # Classe da spider
 
             # Adiciona o corpo completo ao dicionário de dados da notícia
             news_data["corpo_completo"] = corpo_completo
+
+            # Filtra a notícia com base nas palavras-chave
+            palavras_encontradas = filtrar_keywords(DB_PATH, corpo_completo, debug=True)
+            if not palavras_encontradas:
+                self.log(f"Notícia ignorada (não atende às palavras-chave): {response.url}")
+                return
+
+            # Verifica se a notícia atende à regra de relevância
+            tem_obrigatoria = len(palavras_encontradas["obrigatorias"]) > 0
+            tem_adicional = len(palavras_encontradas["adicionais"]) > 0
+
+            if not (tem_obrigatoria and tem_adicional):
+                self.log(f"Notícia ignorada (não atende à regra de relevância): {response.url}")
+                return
+
+            # Adiciona as palavras-chave encontradas ao dicionário de dados da notícia
+            news_data["palavras_obrigatorias_encontradas"] = palavras_encontradas["obrigatorias"]
+            news_data["palavras_adicionais_encontradas"] = palavras_encontradas["adicionais"]
+
+            # Log das palavras-chave encontradas
+            self.log(f"Palavras-chave obrigatórias encontradas: {palavras_encontradas['obrigatorias']}")
+            self.log(f"Palavras-chave adicionais encontradas: {palavras_encontradas['adicionais']}")
 
             # Retorna os dados da notícia
             yield news_data
