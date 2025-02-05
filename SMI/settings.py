@@ -62,9 +62,10 @@ ROBOTSTXT_OBEY = True
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    "SMI.pipelines.SmiPipeline": 300,
-#}
+ITEM_PIPELINES = {
+    "SMI.pipelines.FormatTimestampPipeline": 100,  # Primeiro formata o timestamp
+    "SMI.pipelines.SaveToDatabasePipeline": 200,  # Depois salva no banco de dados
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
