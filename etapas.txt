@@ -1,0 +1,15 @@
+1 - Abrir CMD
+2 - Fazer 'scrapy shell LINK_NOTICIA'
+3 - Testar seletores: response.css('seletor_css').get() ; response.css('seletor_css::text').get() PARA corpo response.css('sel_corpo::text').getall() IGNORAR child(3)
+4 - Salvar no bd:
+
+    abrir terminal
+    cd db
+    sqlite3 banco_smi.db
+    UPDATE portais SET rastreio = 'link sitemap' WHERE id IN (1, 2, 3);
+
+    portais = TABELA
+    rastreio = COLUNA
+    id = PORTAL
+
+    
