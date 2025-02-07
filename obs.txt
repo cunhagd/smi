@@ -1,0 +1,3 @@
+PIPELINE: normalizar nomes de autores com capitalização apenas nas letras inicias
+PIPELINE: limpar corpo da noticia de tags e caracteres de html
+PIPELINE:

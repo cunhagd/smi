@@ -4,15 +4,15 @@ from SMI.database import buscar_urls, buscar_apelido, buscar_pontos, buscar_abra
 from SMI.items import NoticiaItem
 from SMI.utils import filtrar_keywords
 
-
 class EmSpider(SitemapSpider):
-    name = "Estado de Minas"
+    name = "G1"
 
     def __init__(self, *args, **kwargs):
         super(EmSpider, self).__init__(*args, **kwargs)
         apelidos = buscar_apelido(self.name)
         if apelidos:
-            self.sitemap_urls = buscar_urls(DB_PATH, apelidos[0])
+            # Define o sitemap principal do G1
+            self.sitemap_urls = ["https://g1.globo.com/sitemap/g1/sitemap.xml"]
         else:
             print("Nenhum apelido encontrado no banco de dados.")
             self.sitemap_urls = []
@@ -22,11 +22,14 @@ class EmSpider(SitemapSpider):
         self.total_links_encontrados = 0
         self.total_ignoradas_categoria = 0
         self.total_ignoradas_data = 0
-        self.total_ignoradas_palavras_chave = 0  # Contador para ignoradas por palavras-chave
+        self.total_ignoradas_palavras_chave = 0
         self.total_com_erro = 0
         self.total_relevantes_salvas = 0
 
     def obter_seletor(self, funcao_seletor, tipo):
+        """
+        Obtém o seletor CSS/XPath para um determinado tipo (ex.: corpo, autor).
+        """
         seletor = funcao_seletor(DB_PATH, self.name)
         if not seletor:
             self.log(f"Seletor CSS para {tipo} não encontrado para o portal '{self.name}'")
@@ -81,7 +84,7 @@ class EmSpider(SitemapSpider):
         palavras_encontradas = filtrar_keywords(DB_PATH, corpo_completo, debug=True)
         if not palavras_encontradas:
             self.log(f"Notícia ignorada (não atende às palavras-chave): {response.url}")
-            self.total_ignoradas_palavras_chave += 1  # Incrementa o contador correto
+            self.total_ignoradas_palavras_chave += 1
             return
 
         # Verifica a regra de relevância
@@ -89,7 +92,7 @@ class EmSpider(SitemapSpider):
         tem_adicional = len(palavras_encontradas["adicionais"]) > 0
         if not (tem_obrigatoria and tem_adicional):
             self.log(f"Notícia ignorada (não atende à regra de relevância): {response.url}")
-            self.total_ignoradas_palavras_chave += 1  # Incrementa o contador correto
+            self.total_ignoradas_palavras_chave += 1
             return
 
         # Adiciona as palavras-chave encontradas ao item
@@ -103,9 +106,9 @@ class EmSpider(SitemapSpider):
             if autor_element:
                 # Extrai apenas o texto do elemento
                 autor = response.css(sel_autor).get()
-                item['autor'] = autor.strip() if autor else 'Redação Estado de Minas'
+                item['autor'] = autor.strip() if autor else 'Redação G1'
             else:
-                item['autor'] = 'Redação Estado de Minas'
+                item['autor'] = 'Redação G1'
 
         # Busca pontos e abrangência do portal
         pontos_portal = buscar_pontos(self.name)
@@ -119,12 +122,23 @@ class EmSpider(SitemapSpider):
         # Retorna o item da notícia
         yield item
 
+    def sitemap_filter(self, entries):
+        """
+        Filtra os sitemaps para processar apenas o sitemap diário correspondente à data de hoje.
+        """
+        today_str = datetime.now().strftime("%Y/%m/%d")  # Data de hoje no formato YYYY/MM/DD
+        for entry in entries:
+            loc = entry.get("loc", "")
+            if today_str in loc:
+                self.logger.info(f"Processando sitemap diário: {loc}")
+                yield entry
+
     def closed(self, reason):
         # Exibe os resultados da depuração ao final da execução
         self.logger.info("=== Resumo da Execução ===")
         self.logger.info(f"Total de links de notícias encontrados: {self.total_links_encontrados}")
         self.logger.info(f"Total de notícias ignoradas por categoria: {self.total_ignoradas_categoria}")
         self.logger.info(f"Total de notícias ignoradas por data: {self.total_ignoradas_data}")
-        self.logger.info(f"Total de notícias ignoradas por palavras-chave: {self.total_ignoradas_palavras_chave}")  # Contador correto
+        self.logger.info(f"Total de notícias ignoradas por palavras-chave: {self.total_ignoradas_palavras_chave}")
         self.logger.info(f"Total de notícias com erro: {self.total_com_erro}")
         self.logger.info(f"Total de notícias relevantes salvas: {self.total_relevantes_salvas}")

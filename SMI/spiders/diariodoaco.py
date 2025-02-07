@@ -6,7 +6,7 @@ from SMI.utils import filtrar_keywords
 
 
 class EmSpider(SitemapSpider):
-    name = "Estado de Minas"
+    name = "Diário do Aço"
 
     def __init__(self, *args, **kwargs):
         super(EmSpider, self).__init__(*args, **kwargs)
@@ -99,13 +99,19 @@ class EmSpider(SitemapSpider):
         # Extrai o autor usando o seletor obtido
         sel_autor = self.obter_seletor(seletor_autor, "autor")
         if sel_autor:
-            autor_element = response.css(sel_autor).get()  # Obtém o elemento HTML
+            autor_element = response.css(sel_autor).get()  # Obtém apenas o texto do elemento
             if autor_element:
-                # Extrai apenas o texto do elemento
-                autor = response.css(sel_autor).get()
-                item['autor'] = autor.strip() if autor else 'Redação Estado de Minas'
+                # Remove espaços em branco extras no início e no fim
+                autor = autor_element.strip()
+                # Verifica se o valor é exatamente 'Divulgação'
+                if autor == 'Divulgação':
+                    item['autor'] = 'Redação Diário do Aço'
+                else:
+                    item['autor'] = autor  # Mantém o valor original caso não seja 'Divulgação'
             else:
-                item['autor'] = 'Redação Estado de Minas'
+                item['autor'] = 'Redação Diário do Aço'  # Valor padrão caso o seletor não encontre nada
+        else:
+            item['autor'] = 'Redação Diário do Aço'  # Valor padrão caso o seletor não exista
 
         # Busca pontos e abrangência do portal
         pontos_portal = buscar_pontos(self.name)

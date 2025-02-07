@@ -1,6 +1,7 @@
 import sqlite3
 from datetime import datetime
 import re
+import os
 
 DB_PATH = r"db\banco_smi.db"
 
@@ -18,6 +19,10 @@ def buscar_urls(db_path, apelido):
         conn.close()
 
 def buscar_apelido(name):
+    if not os.path.exists(DB_PATH):
+        print(f"Erro: O arquivo de banco de dados '{DB_PATH}' não foi encontrado.")
+        return []
+    
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     try:
