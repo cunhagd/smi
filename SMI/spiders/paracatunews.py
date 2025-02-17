@@ -6,7 +6,7 @@ from SMI.utils import filtrar_keywords
 
 
 class EmSpider(SitemapSpider):
-    name = "Estado de Minas"
+    name = "Paracatu News"
 
     def __init__(self, *args, **kwargs):
         super(EmSpider, self).__init__(*args, **kwargs)
@@ -103,9 +103,9 @@ class EmSpider(SitemapSpider):
             if autor_element:
                 # Extrai apenas o texto do elemento
                 autor = response.css(sel_autor).get()
-                item['autor'] = autor.strip() if autor else 'Redação Penha News SP'
+                item['autor'] = autor.strip() if autor else 'Redação Paracatu News'
             else:
-                item['autor'] = 'Redação Penha News SP'
+                item['autor'] = 'Redação Paracatu News'
 
         # Busca pontos e abrangência do portal
         pontos_portal = buscar_pontos(self.name)
