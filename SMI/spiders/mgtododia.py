@@ -6,7 +6,7 @@ from SMI.utils import filtrar_keywords
 
 
 class EmSpider(SitemapSpider):
-    name = "Estado de Minas"
+    name = "MG Todo Dia"
 
     def __init__(self, *args, **kwargs):
         super(EmSpider, self).__init__(*args, **kwargs)
@@ -103,9 +103,9 @@ class EmSpider(SitemapSpider):
             if autor_element:
                 # Extrai apenas o texto do elemento
                 autor = response.css(sel_autor).get()
-                item['autor'] = autor.strip() if autor else 'Redação Estado de Minas'
+                item['autor'] = autor.strip() if autor else 'Redação MG Todo Dia'
             else:
-                item['autor'] = 'Redação Estado de Minas'
+                item['autor'] = 'Redação MG Todo Dia'
 
         # Busca pontos e abrangência do portal
         pontos_portal = buscar_pontos(self.name)
