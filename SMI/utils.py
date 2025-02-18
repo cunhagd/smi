@@ -40,3 +40,5 @@ def filtrar_keywords(db_path, corpo_noticia, debug=False):
         return False if not debug else {"obrigatorias": [], "adicionais": []}
     finally:
         conn.close()
+
+
