@@ -1,6 +1,6 @@
 from scrapy.spiders import SitemapSpider
 from datetime import datetime
-from SMI.database import buscar_urls, buscar_apelido, buscar_pontos, buscar_abrangencia, buscar_categorias, seletor_autor, seletor_corpo, DB_PATH
+from SMI.database import buscar_urls, buscar_apelido, buscar_pontos, buscar_abrangencia, buscar_categorias, seletor_autor, seletor_corpo
 from SMI.items import NoticiaItem
 from SMI.utils import filtrar_keywords
 
@@ -12,7 +12,7 @@ class EmSpider(SitemapSpider):
         super(EmSpider, self).__init__(*args, **kwargs)
         apelidos = buscar_apelido(self.name)
         if apelidos:
-            self.sitemap_urls = buscar_urls(DB_PATH, apelidos[0])
+            self.sitemap_urls = buscar_urls(apelidos[0])
         else:
             print("Nenhum apelido encontrado no banco de dados.")
             self.sitemap_urls = []
@@ -27,7 +27,7 @@ class EmSpider(SitemapSpider):
         self.total_relevantes_salvas = 0
 
     def obter_seletor(self, funcao_seletor, tipo):
-        seletor = funcao_seletor(DB_PATH, self.name)
+        seletor = funcao_seletor(self.name)
         if not seletor:
             self.log(f"Seletor CSS para {tipo} não encontrado para o portal '{self.name}'")
             return None
@@ -78,7 +78,7 @@ class EmSpider(SitemapSpider):
         item['corpo_completo'] = corpo_completo
 
         # Filtra a notícia com base nas palavras-chave
-        palavras_encontradas = filtrar_keywords(DB_PATH, corpo_completo, debug=True)
+        palavras_encontradas = filtrar_keywords(corpo_completo, debug=True)
         if not palavras_encontradas:
             self.log(f"Notícia ignorada (não atende às palavras-chave): {response.url}")
             self.total_ignoradas_palavras_chave += 1  # Incrementa o contador correto

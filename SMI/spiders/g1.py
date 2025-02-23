@@ -1,6 +1,6 @@
 from scrapy.spiders import SitemapSpider
 from datetime import datetime
-from SMI.database import buscar_urls, buscar_apelido, buscar_pontos, buscar_abrangencia, buscar_categorias, seletor_autor, seletor_corpo, DB_PATH
+from SMI.database import buscar_urls, buscar_apelido, buscar_pontos, buscar_abrangencia, buscar_categorias, seletor_autor, seletor_corpo
 from SMI.items import NoticiaItem
 from SMI.utils import filtrar_keywords
 
@@ -30,7 +30,7 @@ class EmSpider(SitemapSpider):
         """
         Obtém o seletor CSS/XPath para um determinado tipo (ex.: corpo, autor).
         """
-        seletor = funcao_seletor(DB_PATH, self.name)
+        seletor = funcao_seletor(self.name)
         if not seletor:
             self.log(f"Seletor CSS para {tipo} não encontrado para o portal '{self.name}'")
             return None
@@ -81,7 +81,7 @@ class EmSpider(SitemapSpider):
         item['corpo_completo'] = corpo_completo
 
         # Filtra a notícia com base nas palavras-chave
-        palavras_encontradas = filtrar_keywords(DB_PATH, corpo_completo, debug=True)
+        palavras_encontradas = filtrar_keywords(corpo_completo, debug=True)
         if not palavras_encontradas:
             self.log(f"Notícia ignorada (não atende às palavras-chave): {response.url}")
             self.total_ignoradas_palavras_chave += 1

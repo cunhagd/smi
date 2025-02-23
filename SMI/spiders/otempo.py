@@ -1,9 +1,8 @@
 from scrapy.spiders import SitemapSpider
 from datetime import datetime
-from SMI.database import buscar_urls, buscar_apelido, buscar_pontos, buscar_abrangencia, buscar_categorias, seletor_autor, seletor_corpo, DB_PATH
+from SMI.database import buscar_urls, buscar_apelido, buscar_pontos, buscar_abrangencia, buscar_categorias, seletor_autor, seletor_corpo
 from SMI.items import NoticiaItem
 from SMI.utils import filtrar_keywords
-import re
 
 
 class EmSpider(SitemapSpider):
@@ -13,7 +12,7 @@ class EmSpider(SitemapSpider):
         super(EmSpider, self).__init__(*args, **kwargs)
         apelidos = buscar_apelido(self.name)
         if apelidos:
-            self.sitemap_urls = buscar_urls(DB_PATH, apelidos[0])
+            self.sitemap_urls = buscar_urls(apelidos[0])
         else:
             print("Nenhum apelido encontrado no banco de dados.")
             self.sitemap_urls = []
@@ -28,7 +27,7 @@ class EmSpider(SitemapSpider):
         self.total_relevantes_salvas = 0
 
     def obter_seletor(self, funcao_seletor, tipo):
-        seletor = funcao_seletor(DB_PATH, self.name)
+        seletor = funcao_seletor(self.name)
         if not seletor:
             self.log(f"Seletor CSS para {tipo} não encontrado para o portal '{self.name}'")
             return None
@@ -79,7 +78,7 @@ class EmSpider(SitemapSpider):
         item['corpo_completo'] = corpo_completo
 
         # Filtra a notícia com base nas palavras-chave
-        palavras_encontradas = filtrar_keywords(DB_PATH, corpo_completo, debug=True)
+        palavras_encontradas = filtrar_keywords(corpo_completo, debug=True)
         if not palavras_encontradas:
             self.log(f"Notícia ignorada (não atende às palavras-chave): {response.url}")
             self.total_ignoradas_palavras_chave += 1  # Incrementa o contador correto
@@ -97,52 +96,16 @@ class EmSpider(SitemapSpider):
         item['palavras_obrigatorias_encontradas'] = palavras_encontradas["obrigatorias"]
         item['palavras_adicionais_encontradas'] = palavras_encontradas["adicionais"]
 
-        # Obtém o seletor do autor
+        # Extrai o autor usando o seletor obtido
         sel_autor = self.obter_seletor(seletor_autor, "autor")
         if sel_autor:
-            # Tenta capturar o autor em diferentes formatos
-            autor = None
-
-            # Função auxiliar para validar o texto do autor
-            def is_valid_author(text):
-                """
-                Verifica se o texto do autor é válido.
-                Um texto é considerado válido se não for vazio e não contiver caracteres especiais.
-                """
-                if not text or not isinstance(text, str):
-                    return False
-                # Define um padrão regex para identificar caracteres especiais
-                # Permitimos letras, números, espaços e alguns caracteres comuns (ex.: hífen, apóstrofo)
-                pattern = r"^[a-zA-Z0-9áéíóúÁÉÍÓÚãõÃÕçÇ\s\-']+$"
-                return bool(re.match(pattern, text))
-
-            # Caso 1: Autor dentro de um link (<a>)
-            autor_link = response.css(f"{sel_autor} a::text").get()
-            if autor_link and is_valid_author(autor_link.strip()):
-                autor = autor_link.strip()
-
-            # Caso 2: Autor como texto direto no elemento selecionado
-            if not autor:
-                autor_texto = response.css(f"{sel_autor}::text").get()
-                if autor_texto and is_valid_author(autor_texto.strip()):
-                    autor = autor_texto.strip()
-
-            # Caso 3: Autor dentro de um <span> (ou outro elemento filho)
-            if not autor:
-                autor_span = response.css(f"{sel_autor} > span::text").get()
-                if autor_span and is_valid_author(autor_span.strip()):
-                    autor = autor_span.strip()
-
-            # Caso 4: Autor em um atributo (ex.: title)
-            if not autor:
-                autor_title = response.css(f"{sel_autor}::attr(title)").get()
-                if autor_title and is_valid_author(autor_title.strip()):
-                    autor = autor_title.strip()
-
-            # Define o autor como 'Redação O Tempo' se nenhum caso acima for satisfeito
-            item['autor'] = autor if autor else 'Redação O Tempo'
-        else:
-            item['autor'] = 'Redação O Tempo'
+            autor_element = response.css(sel_autor).get()  # Obtém o elemento HTML
+            if autor_element:
+                # Extrai apenas o texto do elemento
+                autor = response.css(sel_autor).get()
+                item['autor'] = autor.strip() if autor else 'Redação O Tempo'
+            else:
+                item['autor'] = 'Redação O Tempo'
 
         # Busca pontos e abrangência do portal
         pontos_portal = buscar_pontos(self.name)

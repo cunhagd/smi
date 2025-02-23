@@ -1,6 +1,6 @@
 from scrapy.spiders import SitemapSpider
 from datetime import datetime
-from SMI.database import buscar_urls, buscar_apelido, buscar_pontos, buscar_abrangencia, buscar_categorias, seletor_autor, seletor_corpo, DB_PATH
+from SMI.database import buscar_urls, buscar_apelido, buscar_pontos, buscar_abrangencia, buscar_categorias, seletor_autor, seletor_corpo
 from SMI.items import NoticiaItem
 from SMI.utils import filtrar_keywords
 
@@ -12,7 +12,7 @@ class EmSpider(SitemapSpider):
         super(EmSpider, self).__init__(*args, **kwargs)
         apelidos = buscar_apelido(self.name)
         if apelidos:
-            self.sitemap_urls = buscar_urls(DB_PATH, apelidos[0])
+            self.sitemap_urls = buscar_urls(apelidos[0])
         else:
             print("Nenhum apelido encontrado no banco de dados.")
             self.sitemap_urls = []
@@ -27,7 +27,7 @@ class EmSpider(SitemapSpider):
         self.total_relevantes_salvas = 0
 
     def obter_seletor(self, funcao_seletor, tipo):
-        seletor = funcao_seletor(DB_PATH, self.name)
+        seletor = funcao_seletor(self.name)
         if not seletor:
             self.log(f"Seletor CSS para {tipo} não encontrado para o portal '{self.name}'")
             return None
@@ -78,7 +78,7 @@ class EmSpider(SitemapSpider):
         item['corpo_completo'] = corpo_completo
 
         # Filtra a notícia com base nas palavras-chave
-        palavras_encontradas = filtrar_keywords(DB_PATH, corpo_completo, debug=True)
+        palavras_encontradas = filtrar_keywords(corpo_completo, debug=True)
         if not palavras_encontradas:
             self.log(f"Notícia ignorada (não atende às palavras-chave): {response.url}")
             self.total_ignoradas_palavras_chave += 1  # Incrementa o contador correto
@@ -99,19 +99,13 @@ class EmSpider(SitemapSpider):
         # Extrai o autor usando o seletor obtido
         sel_autor = self.obter_seletor(seletor_autor, "autor")
         if sel_autor:
-            autor_element = response.css(sel_autor).get()  # Obtém apenas o texto do elemento
+            autor_element = response.css(sel_autor).get()  # Obtém o elemento HTML
             if autor_element:
-                # Remove espaços em branco extras no início e no fim
-                autor = autor_element.strip()
-                # Verifica se o valor é exatamente 'Divulgação'
-                if autor == 'Divulgação':
-                    item['autor'] = 'Redação Diário do Aço'
-                else:
-                    item['autor'] = autor  # Mantém o valor original caso não seja 'Divulgação'
+                # Extrai apenas o texto do elemento
+                autor = response.css(sel_autor).get()
+                item['autor'] = autor.strip() if autor else 'Redação Diário da Aço'
             else:
-                item['autor'] = 'Redação Diário do Aço'  # Valor padrão caso o seletor não encontre nada
-        else:
-            item['autor'] = 'Redação Diário do Aço'  # Valor padrão caso o seletor não exista
+                item['autor'] = 'Redação Diário da Aço'
 
         # Busca pontos e abrangência do portal
         pontos_portal = buscar_pontos(self.name)
